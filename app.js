@@ -6,15 +6,16 @@ var logger = require("morgan");
 var cors = require("cors");
 var multer = require("multer");
 var upload = multer();
+var mongoose = require("mongoose");
 
 var indexRouter = require("./routes/index");
 var postRouter = require("./routes/post");
+var authRouter = require("./routes/auth");
 
 var app = express();
 
 app.use(cors());
 
-// view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "jade");
 
@@ -25,8 +26,21 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "/build")));
 app.use(upload.array());
 
+mongoose.connect("mongodb://localhost:27017/test", {
+  useUnifiedTopology: true,
+  useNewUrlParser: true,
+  useCreateIndex: true,
+});
+mongoose.connection.on("connected", () => {
+  console.log("Connected to Test");
+});
+mongoose.connection.on("error", (error) => {
+  console.log(error);
+});
+
 app.use("/api/", indexRouter);
 app.use("/api/post/", postRouter);
+app.use("/api/auth/", authRouter);
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "/build/index.html"));
