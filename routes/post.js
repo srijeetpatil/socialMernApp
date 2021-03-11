@@ -1,73 +1,58 @@
 var express = require("express");
 var router = express.Router();
-var MongoClient = require("mongodb").MongoClient;
+var User = require("../models/User");
+var Post = require("../models/Post");
+var mongoose = require("mongoose");
 
-MongoClient.connect(
-  "mongodb://localhost:27017/",
-  {
-    useUnifiedTopology: true,
-    useNewUrlParser: true,
-  },
-  function (err, client) {
-    if (err) throw err;
-    var db = client.db("test");
-
-    router.get("/", (req, res, next) => {
-      db.collection("data")
-        .find({}, { _id: 0 })
-        .toArray((err, result) => {
-          if (err) next(err);
-          res.statusCode = 200;
-          res.setHeader("Content-type", "application/json");
-          res.json(result);
+router
+  .route("/")
+  .post((req, res, next) => {
+    let data = req.body;
+    let caption = data.caption;
+    let token = req.headers.authorization;
+    User.findOne({ token: token }, (err, result) => {
+      if (err) {
+        res.statusCode = 500;
+        res.setHeader("Content-type", "application/json");
+        res.json({ error: "Something went wrong" });
+        return next(err);
+      } else if (result) {
+        let id = result._id;
+        let newPost = new Post({
+          _id: new mongoose.Types.ObjectId(),
+          caption: caption,
+          author: id,
         });
-    });
-
-    router.post("/", (req, res, next) => {
-      let data = req.body;
-      let name = data.name;
-      let pincode = data.pincode;
-      if (name && pincode) {
-        db.collection("Student").insertOne(data, (error, response) => {
-          if (error) next(error);
+        newPost.save((err) => {
+          if (err) {
+            res.statusCode = 500;
+            res.setHeader("Content-type", "application/json");
+            res.json({ error: "Something went wrong" });
+            return next(err);
+          }
           res.statusCode = 200;
           res.setHeader("Content-type", "application/json");
-          res.json(response);
+          res.json({ message: "success" });
         });
       } else {
         res.statusCode = 400;
         res.setHeader("Content-type", "application/json");
-        res.json({ error: "Invalid data" });
+        res.json({ error: "Provide the right authorization details" });
       }
     });
+  })
 
-    router.put("/", (req, res, next) => {
-      let data = req.body;
-      let id = data.id;
-      let name = data.name;
-      let pincode = data.pincode;
-      db.collection("data").findOneAndUpdate(
-        { _id: id },
-        { $set: data },
-        { new: true, upsert: true, remove: false, projection: {} },
-        (err, result) => {
-          if (err) return next(err);
-          console.log(result);
-          res.statusCode = 200;
-          res.setHeader("Content-type", "application/json");
-          res.json({ message: "success" });
-        }
-      );
-    });
-
-    router.delete("/", (req, res, next) => {
-      let data = req.body;
-      let id = data.id;
-      res.statusCode = 400;
-      res.setHeader("Content-type", "application/json");
-      res.json({ error: "Cannot remove from capped collection" });
-    });
-  }
-);
+  .get((req, res, next) => {
+    let data = req.body;
+    let postId = data.postId;
+    Post.findById(postId)
+      .populate("author")
+      .exec((err, result) => {
+        if (err) return next(err);
+        res.statusCode = 200;
+        res.setHeader("Content-type", "application/json");
+        res.json(result);
+      });
+  });
 
 module.exports = router;
