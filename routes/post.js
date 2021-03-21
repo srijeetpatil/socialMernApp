@@ -3,6 +3,11 @@ var router = express.Router();
 var User = require("../models/User");
 var Post = require("../models/Post");
 var mongoose = require("mongoose");
+var multer = require("multer");
+var upload = multer({ dest: "add/" });
+var fs = require("fs");
+
+var type = upload.single("recfile");
 
 router
   .route("/")
@@ -10,6 +15,7 @@ router
     let data = req.body;
     let caption = data.caption;
     let token = req.headers.authorization;
+    token = token.split("Token ")[1];
     User.findOne({ token: token }, (err, result) => {
       if (err) {
         res.statusCode = 500;
@@ -54,5 +60,10 @@ router
         res.json(result);
       });
   });
+
+router.route("/add/").post(type, (req, res, next) => {
+  let data = req.body;
+  res.sendStatus(200);
+});
 
 module.exports = router;
